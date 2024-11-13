@@ -4,7 +4,7 @@
 package mocks
 
 import (
-	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tbapi "github.com/OvyFlash/telegram-bot-api"
 	"sync"
 )
 
