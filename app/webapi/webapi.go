@@ -132,17 +132,6 @@ func (s *Server) Run(ctx context.Context) error {
 	router.Use(tollbooth_chi.LimitHandler(tollbooth.NewLimiter(50, nil)))
 	router.Use(rest.SizeLimit(1024 * 1024)) // 1M max request size
 
-	if s.AuthPasswd != "" || s.AuthHash != "" {
-		log.Printf("[INFO] basic auth enabled for webapi server")
-		if s.AuthHash != "" {
-			router.Use(rest.BasicAuthWithBcryptHashAndPrompt("tg-spam", s.AuthHash))
-		} else {
-			router.Use(rest.BasicAuthWithPrompt("tg-spam", s.AuthPasswd))
-		}
-	} else {
-		log.Printf("[WARN] basic auth disabled, access to webapi is not protected")
-	}
-
 	router = s.routes(router) // setup routes
 
 	srv := &http.Server{Addr: s.ListenAddr, Handler: router, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second}
@@ -165,7 +154,9 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) routes(router *chi.Mux) *chi.Mux {
 	// auth api routes
 	router.Group(func(authApi chi.Router) {
+		s.setAuthMiddleware(authApi)
 		authApi.Use(s.authMiddleware(rest.BasicAuthWithUserPasswd("tg-spam", s.AuthPasswd)))
+
 		authApi.Post("/check", s.checkHandler) // check a message for spam
 
 		authApi.Route("/update", func(r chi.Router) { // update spam/ham samples
@@ -202,7 +193,8 @@ func (s *Server) routes(router *chi.Mux) *chi.Mux {
 	})
 
 	router.Group(func(webUI chi.Router) {
-		webUI.Use(s.authMiddleware(rest.BasicAuthWithPrompt("tg-spam", s.AuthPasswd)))
+		s.setAuthMiddleware(webUI)
+
 		webUI.Get("/", s.htmlSpamCheckHandler)                         // serve template for webUI UI
 		webUI.Get("/manage_samples", s.htmlManageSamplesHandler)       // serve manage samples page
 		webUI.Get("/manage_users", s.htmlManageUsersHandler)           // serve manage users page
@@ -215,6 +207,19 @@ func (s *Server) routes(router *chi.Mux) *chi.Mux {
 	})
 
 	return router
+}
+
+func (s *Server) setAuthMiddleware(router chi.Router) {
+	if s.AuthPasswd != "" || s.AuthHash != "" {
+		log.Printf("[INFO] basic auth enabled for webapi server")
+		if s.AuthHash != "" {
+			router.Use(rest.BasicAuthWithBcryptHashAndPrompt("tg-spam", s.AuthHash))
+		} else {
+			router.Use(rest.BasicAuthWithPrompt("tg-spam", s.AuthPasswd))
+		}
+	} else {
+		log.Printf("[WARN] basic auth disabled, access to webapi is not protected")
+	}
 }
 
 // checkHandler handles POST /check request.
