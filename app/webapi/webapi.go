@@ -206,6 +206,10 @@ func (s *Server) routes(router *chi.Mux) *chi.Mux {
 		webUI.Post("/detected_spam/add", s.htmlAddDetectedSpamHandler) // add detected spam to samples
 	})
 
+	router.Group(func(openApi chi.Router) {
+		openApi.Get("/health_check", s.healthCheckhandler) // open healthcheck route
+	})
+
 	return router
 }
 
@@ -654,6 +658,10 @@ func (s *Server) renderSamples(w http.ResponseWriter, tmplName string) {
 		rest.RenderJSON(w, rest.JSON{"error": "can't execute template", "details": err.Error()})
 		return
 	}
+}
+
+func (s *Server) healthCheckhandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) authMiddleware(mw func(next http.Handler) http.Handler) func(next http.Handler) http.Handler {
