@@ -34,3 +34,4 @@ USER app
 WORKDIR /srv
 EXPOSE 8080
 ENTRYPOINT ["/srv/tg-spam"]
+HEALTHCHECK CMD ["wget", "localhost:8080"]
